@@ -1,0 +1,91 @@
+<html>
+   <head>
+
+   </head>
+   <body>
+      <input type="file" id="file" accept="audio/mp3" />
+      <button id="play">Reproducir</button>
+      
+      <div class="effect-control">
+         <label for="pitchLevel">Pitch:</label>
+         <input type="range" id="pitchLevel" min="0.3" max="2.0" step="0.1" value="1">
+         <span id="pitchValue">1</span>
+      </div>
+
+      <div>
+        <label for="volumeControl">Volumen:</label>
+        <input type="range" id="volumeControl" min="0" max="1" step="0.01" value="0.7">
+      </div>
+
+      <script>
+
+         let audioContext;
+         let sourceNode;
+         let gainNode;
+         let isPlaying = false;
+         let workletNode;
+
+         document.getElementById('file').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            await initContext();
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+               audioContext.decodeAudioData(e.target.result)
+                  .then(buffer => {
+                     sourceNode = audioContext.createBufferSource();
+                     sourceNode.buffer = buffer;
+                     sourceNode.connect(gainNode);
+                  })
+                  .catch(error => {
+                     console.error('Error al decodificar el audio:', error);
+                     fileInfo.textContent = 'Error al cargar el archivo de audio';
+                  });
+            };
+            reader.readAsArrayBuffer(file);
+         });
+
+         async function initContext(){
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            await audioContext.audioWorklet.addModule('phase_vocoder.js');
+
+            gainNode = audioContext.createGain();
+            analyser = audioContext.createAnalyser();
+            workletNode = new AudioWorkletNode(audioContext, 'phase-vocoder-processor');
+            workletNode.parameters.get('pitchFactor').value = 1.0;
+
+            gainNode.connect(workletNode);
+            workletNode.connect(audioContext.destination);
+            //gainNode.connect(audioContext.destination);
+
+
+         }
+
+         document.getElementById('play').addEventListener('click', function() {
+            if (!sourceNode || isPlaying) return;
+
+            sourceNode.start(0);
+            isPlaying = true;
+         });
+
+         document.getElementById('volumeControl').addEventListener('input', () => {
+            if (gainNode) {
+               gainNode.gain.value = volumeControl.value;
+            }
+         });
+
+         document.getElementById('pitchLevel').addEventListener('input', () => {
+            if (workletNode) {
+               let level = document.getElementById("pitchLevel").value;
+               document.getElementById("pitchValue").innerHTML = level;
+               workletNode.parameters.get('pitchFactor').value = parseFloat(level);
+            }
+         });
+
+      </script>
+
+
+   </body>
+</html>
