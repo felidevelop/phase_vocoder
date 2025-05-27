@@ -125,8 +125,6 @@ class FFT {
       //if (out.size() == data.size() && std::equal(out.begin(), out.end(), data.begin()))
       //   throw std::invalid_argument("Input and output buffers must be different");
 
-      // tengo que revisar porque fft no se aplica bien
-
       this->_out = out;
       this->_data = data;
       this->_inv = 0;
